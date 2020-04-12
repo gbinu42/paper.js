@@ -113,7 +113,7 @@ var Raster = Item.extend(/** @lends Raster# */{
         // - A size (Size) describing the canvas that will be  created and an
         //   optional position (Point).
         // If _initialize can set properties through object literal, we're done.
-        // Otherwise we need to check the type of object:       var image,
+        // Otherwise we need to check the type of object:
         if (!this._initialize(source,
                 position !== undefined && Point.read(arguments))) {
             var image,
@@ -124,7 +124,7 @@ var Raster = Item.extend(/** @lends Raster# */{
                         ? source
                         : null;
             if (object && object !== Item.NO_INSERT) {
-                if (object.getContent || object.naturalHeight != null) {
+                if (object.getContext || object.naturalHeight != null) {
                     image = object;
                 } else if (object) {
                     // See if the arguments describe the raster size:

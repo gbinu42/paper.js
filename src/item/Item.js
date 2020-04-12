@@ -168,6 +168,7 @@ new function() { // Injection scope for various item event handlers
                 internal: true, insert: true, project: true, parent: true
             });
         }
+        if(this.ctor) this.ctor();
         return hasProps;
     },
 
@@ -2933,7 +2934,7 @@ new function() { // Injection scope for hit-test functions shared with project
      * defined in such a way, e.g. if one is a descendant of the other.
      */
     _getOrder: function(item) {
-        // Private method that produces a list of anchestors, starting with the
+        // Private method that produces a list of ancestors, starting with the
         // root and ending with the actual element as the last entry.
         function getList(item) {
             var list = [];
