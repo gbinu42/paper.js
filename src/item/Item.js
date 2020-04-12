@@ -168,6 +168,7 @@ new function() { // Injection scope for various item event handlers
                 internal: true, insert: true, project: true, parent: true
             });
         }
+        if(this.ctor) this.ctor();
         return hasProps;
     },
 
