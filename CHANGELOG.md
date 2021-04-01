@@ -1,5 +1,101 @@
 # Change Log
 
+## `0.12.15`
+
+### Fixed
+
+- Fix NPM installation problem with `husky` introduced in `v0.12.13`
+
+## `0.12.13`
+
+### Fixed
+
+- Fix faulty positioning regression in `Item#rasterize()` (#1905).
+
+## `0.12.12`
+
+### Fixed
+
+- Fix installation problems on Windows by switching from NPM to Yarn for development (#1833).
+
+### Changed
+
+- Change `Item#raster({ resolution, insert })` to receive options object, while remaining backward compatible.
+- Change `Raster#smoothing` to support the values `'low'`, `'medium'`, `'high'`
+  and `'off'`. Setting to a boolean value is still supported, translating `false` →
+  `'off'` and `true` → `'low'`.
+
+### Added
+
+- Allow reusing of raster items in `Item#rasterize({ raster })`: By providing an existing raster in `options.raster`, the raster and maybe even its underlying canvas can be reused, as long as the rasterized size doesn't change between rasterizations. This allows for big performance improvements.
+
+## `0.12.11`
+
+### Fixed
+
+- Fix installation through Yarn (#1831).
+
+## `0.12.9`
+
+### Added
+
+- Export `CanvasProvider` to allow experimenting with
+  https://www.npmjs.com/package/canvaskit-wasm on Node.js
+
+### Fixed
+
+- Fix `Path.strokeBounds` that was incorrect for certain paths (#1824).
+- Fix Gulp 3 issues to be able to run Travis CI tests on Node.js 10, 12, 13 and
+  14.
+
+## `0.12.8`
+
+### Fixed
+
+- TypeScript: Fix returned instance type (#1796).
+- Fix `Path#strokeBounds` for open paths (#1817).
+- Fix animation progress handling in `Tween.update()`.
+- Fix setting `Item#scaling` to a new value after it was set to zero (#1816).
+- SVG Import: Fully support SVG strings with leading line-breaks (#1813).
+- Docs: Improve `Raster#initialize(object)` documentation (#1815, #1782).
+- Docs: Fix `Item#getItem(options)` documentation.
+
+## `0.12.7`
+
+### Fixed
+
+- PaperScript: Actually make `options.paperFeatures.moduleExports` work
+  independently from `options.paperFeatures.operatorOverloading`.
+
+## `0.12.6`
+
+### Added
+
+- PaperScript: Add option `options.paperFeatures.moduleExports` to control
+  module exports conversion.
+
+## `0.12.5`
+
+### Added
+
+- PaperScript: Add option `options.paperFeatures.operatorOverloading` to control
+  operator overloading.
+
+### Fixed
+
+- Fix `new Raster(HTMLCanvasElement)` constructor (#1745).
+- Handle `CurveLocation` on paths with only one segment.
+- Fix recently introduced error in `CompoundPath.compare()` (#1769).
+- Clamp opacity values to [0, 1] (#1814).
+- Support closed `Path` items with blend mode and no segments (#1763).
+- Fix error in `getCrossingSegments()` (#1773).
+- SVG Import: Support SVG strings with leading line-breaks (#1813).
+- Docs: Improve documentation for `Raster#drawImage(CanvasImageSource)` (#1784).
+
+### Changed
+
+- Use `'paper-'` prefix in generated view ids.
+
 ## `0.12.4`
 
 ### Added

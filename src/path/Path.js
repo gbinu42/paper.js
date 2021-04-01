@@ -2,8 +2,8 @@
  * Paper.js - The Swiss Army Knife of Vector Graphics Scripting.
  * http://paperjs.org/
  *
- * Copyright (c) 2011 - 2019, Juerg Lehni & Jonathan Puckey
- * http://scratchdisk.com/ & https://puckey.studio/
+ * Copyright (c) 2011 - 2020, Jürg Lehni & Jonathan Puckey
+ * http://juerglehni.com/ & https://puckey.studio/
  *
  * Distributed under the MIT license. See LICENSE file for details.
  *
@@ -973,7 +973,7 @@ var Path = PathItem.extend(/** @lends Path# */{
      * @param {Number|CurveLocation} location the offset or location on the
      *     path at which to divide the existing curve by inserting a new segment
      * @return {Segment} the newly inserted segment if the location is valid,
-     *     {code null} otherwise
+     *     `null` otherwise
      * @see Curve#divideAt(location)
      */
     divideAt: function(location) {
@@ -2337,9 +2337,8 @@ new function() { // Scope for drawing
                             length = flattener.length,
                             from = -style.getDashOffset(), to,
                             i = 0;
-                        from = from % length;
-                        // Step backwards in the dash sequence first until the
-                        // from parameter is below 0.
+                        // Step backwards in the dash sequence (dash -- no-dash)
+                        // first until the from parameter is below 0.
                         while (from > 0) {
                             from -= getOffset(i--) + getOffset(i--);
                         }
@@ -2793,15 +2792,18 @@ statics: {
         }
 
         var length = segments.length - (closed ? 0 : 1);
-        for (var i = 1; i < length; i++)
-            addJoin(segments[i], join);
-        if (closed) {
-            // Go back to the beginning
-            addJoin(segments[0], join);
-        } else if (length > 0) {
-            // Handle caps on open paths
-            addCap(segments[0], cap);
-            addCap(segments[segments.length - 1], cap);
+        if (length > 0) {
+            for (var i = 1; i < length; i++) {
+                addJoin(segments[i], join);
+            }
+            if (closed) {
+                // Go back to the beginning
+                addJoin(segments[0], join);
+            } else {
+                // Handle caps on open paths
+                addCap(segments[0], cap);
+                addCap(segments[segments.length - 1], cap);
+            }
         }
         return bounds;
     },
@@ -2815,9 +2817,9 @@ statics: {
         if (!matrix)
             return [radius, radius];
         // If a matrix is provided, we need to rotate the stroke circle
-        // and calculate the bounding box of the resulting rotated elipse:
+        // and calculate the bounding box of the resulting rotated ellipse:
         // Get rotated hor and ver vectors, and determine rotation angle
-        // and elipse values from them:
+        // and ellipse values from them:
         var hor = new Point(radius, 0).transform(matrix),
             ver = new Point(0, radius).transform(matrix),
             phi = hor.getAngleInRadians(),
@@ -2826,7 +2828,7 @@ statics: {
         // Formula for rotated ellipses:
         // x = cx + a*cos(t)*cos(phi) - b*sin(t)*sin(phi)
         // y = cy + b*sin(t)*cos(phi) + a*cos(t)*sin(phi)
-        // Derivates (by Wolfram Alpha):
+        // Derivatives (by Wolfram Alpha):
         // derivative of x = cx + a*cos(t)*cos(phi) - b*sin(t)*sin(phi)
         // dx/dt = a sin(t) cos(phi) + b cos(t) sin(phi) = 0
         // derivative of y = cy + b*sin(t)*cos(phi) + a*cos(t)*sin(phi)
@@ -2843,7 +2845,7 @@ statics: {
             tan = Math.tan(phi),
             tx = Math.atan2(b * tan, a),
             ty = Math.atan2(b, tan * a);
-        // Due to symetry, we don't need to cycle through pi * n solutions:
+        // Due to symmetry, we don't need to cycle through pi * n solutions:
         return [Math.abs(a * Math.cos(tx) * cos + b * Math.sin(tx) * sin),
                 Math.abs(b * Math.sin(ty) * cos + a * Math.cos(ty) * sin)];
     },

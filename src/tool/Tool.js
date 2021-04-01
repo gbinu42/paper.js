@@ -2,8 +2,8 @@
  * Paper.js - The Swiss Army Knife of Vector Graphics Scripting.
  * http://paperjs.org/
  *
- * Copyright (c) 2011 - 2019, Juerg Lehni & Jonathan Puckey
- * http://scratchdisk.com/ & https://puckey.studio/
+ * Copyright (c) 2011 - 2020, Jürg Lehni & Jonathan Puckey
+ * http://juerglehni.com/ & https://puckey.studio/
  *
  * Distributed under the MIT license. See LICENSE file for details.
  *
@@ -45,6 +45,7 @@
 var Tool = PaperScopeItem.extend(/** @lends Tool# */{
     _class: 'Tool',
     _list: 'tools',
+    // TODO: This should be `activeTool` instead?
     _reference: 'tool',
     _events: ['onMouseDown', 'onMouseUp', 'onMouseDrag', 'onMouseMove',
             'onActivate', 'onDeactivate', 'onEditOptions', 'onKeyDown',

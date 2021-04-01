@@ -2,8 +2,8 @@
  * Paper.js - The Swiss Army Knife of Vector Graphics Scripting.
  * http://paperjs.org/
  *
- * Copyright (c) 2011 - 2019, Juerg Lehni & Jonathan Puckey
- * http://scratchdisk.com/ & https://puckey.studio/
+ * Copyright (c) 2011 - 2020, Jürg Lehni & Jonathan Puckey
+ * http://juerglehni.com/ & https://puckey.studio/
  *
  * Distributed under the MIT license. See LICENSE file for details.
  *
@@ -858,8 +858,8 @@ statics: /** @lends Curve */{
         }
 
         padding /= 2; // strokePadding is in width, not radius
-        var minPad = min[coord] - padding,
-            maxPad = max[coord] + padding;
+        var minPad = min[coord] + padding,
+            maxPad = max[coord] - padding;
         // Perform a rough bounds checking first: The curve can only extend the
         // current bounds if at least one value is outside the min-max range.
         if (    v0 < minPad || v1 < minPad || v2 < minPad || v3 < minPad ||
@@ -867,8 +867,11 @@ statics: /** @lends Curve */{
             if (v1 < v0 != v1 < v3 && v2 < v0 != v2 < v3) {
                 // If the values of a curve are sorted, the extrema are simply
                 // the start and end point.
-                add(v0, padding);
-                add(v3, padding);
+                // Only add strokeWidth to bounds for points which lie within 0
+                // < t < 1. The corner cases for cap and join are handled in
+                // getStrokeBounds()
+                add(v0, 0);
+                add(v3, 0);
             } else {
                 // Calculate derivative of our bezier polynomial, divided by 3.
                 // Doing so allows for simpler calculations of a, b, c and leads
@@ -882,9 +885,7 @@ statics: /** @lends Curve */{
                     // with radii in getStrokeBounds()
                     tMin = /*#=*/Numerical.CURVETIME_EPSILON,
                     tMax = 1 - tMin;
-                // Only add strokeWidth to bounds for points which lie within 0
-                // < t < 1 The corner cases for cap and join are handled in
-                // getStrokeBounds()
+                // See above for an explanation of padding = 0 here:
                 add(v3, 0);
                 for (var i = 0; i < count; i++) {
                     var t = roots[i],

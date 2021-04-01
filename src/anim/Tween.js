@@ -2,8 +2,8 @@
  * Paper.js - The Swiss Army Knife of Vector Graphics Scripting.
  * http://paperjs.org/
  *
- * Copyright (c) 2011 - 2019, Juerg Lehni & Jonathan Puckey
- * http://scratchdisk.com/ & https://puckey.studio/
+ * Copyright (c) 2011 - 2020, Jürg Lehni & Jonathan Puckey
+ * http://juerglehni.com/ & https://puckey.studio/
  *
  * Distributed under the MIT license. See LICENSE file for details.
  *
@@ -28,7 +28,7 @@ var Tween = Base.extend(Emitter, /** @lends Tween# */{
     _class: 'Tween',
 
     statics: {
-        easings: {
+        easings: new Base({
             // no easing, no acceleration
             linear: function(t) {
                 return t;
@@ -101,7 +101,7 @@ var Tween = Base.extend(Emitter, /** @lends Tween# */{
                     ? 16 * t * t * t * t * t
                     : 1 + 16 * (--t) * t * t * t * t;
             }
-        }
+        })
     },
 
     /**
@@ -163,6 +163,9 @@ var Tween = Base.extend(Emitter, /** @lends Tween# */{
      * });
      */
     then: function(then) {
+        // TODO: This only supports one callback for `then()`. Figure out how
+        // to handle multiple calls to then in an decent way, without relying
+        // on Promises (or should we?).
         this._then = then;
         return this;
     },
@@ -217,8 +220,8 @@ var Tween = Base.extend(Emitter, /** @lends Tween# */{
     // DOCS: Document Tween#update(progress)
     update: function(progress) {
         if (this.running) {
-            if (progress > 1) {
-                // always finish the animation
+            if (progress >= 1) {
+                // Always finish the animation.
                 progress = 1;
                 this.running = false;
             }
@@ -242,15 +245,17 @@ var Tween = Base.extend(Emitter, /** @lends Tween# */{
                 this._setProperty(this._parsedKeys[key], value);
             }
 
-            if (!this.running && this._then) {
-                // TODO Look into what should be returned.
-                this._then(this.object);
-            }
+            // TODO: Set `progress` and `factor` on Tween object also, so they
+            // can be used witout events.
             if (this.responds('update')) {
                 this.emit('update', new Base({
                     progress: progress,
                     factor: factor
                 }));
+            }
+            if (!this.running && this._then) {
+                // TODO: Look into what should be returned.
+                this._then(this.object);
             }
         }
         return this;

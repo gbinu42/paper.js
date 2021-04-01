@@ -3,8 +3,8 @@
 # Paper.js - The Swiss Army Knife of Vector Graphics Scripting.
 # http://paperjs.org/
 #
-# Copyright (c) 2011 - 2019, Juerg Lehni & Jonathan Puckey
-# http://scratchdisk.com/ & https://puckey.studio/
+# Copyright (c) 2011 - 2020, Jürg Lehni & Jonathan Puckey
+# http://juerglehni.com/ & https://puckey.studio/
 #
 # Distributed under the MIT license. See LICENSE file for details.
 #
@@ -29,4 +29,4 @@ git remote remove origin
 git remote add origin https://github.com/paperjs/paper.js.git
 
 # Avoid detached head...
-git checkout $TRAVIS_BRANCH
+git checkout -f $TRAVIS_BRANCH

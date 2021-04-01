@@ -2,8 +2,8 @@
  * Paper.js - The Swiss Army Knife of Vector Graphics Scripting.
  * http://paperjs.org/
  *
- * Copyright (c) 2011 - 2019, Juerg Lehni & Jonathan Puckey
- * http://scratchdisk.com/ & https://puckey.studio/
+ * Copyright (c) 2011 - 2020, Jürg Lehni & Jonathan Puckey
+ * http://juerglehni.com/ & https://puckey.studio/
  *
  * Distributed under the MIT license. See LICENSE file for details.
  *
@@ -251,6 +251,7 @@ new function() { // Injection scope for various item event handlers
      * @function
      * @param {Object} props
      * @return {Item} the item itself
+     * @chainable
      *
      * @example {@paperscript}
      * // Setting properties through an object literal
@@ -1208,19 +1209,32 @@ new function() { // Injection scope for various item event handlers
             var rotation = this.getRotation(),
                 decomposed = this._decomposed,
                 matrix = new Matrix(),
-                center = this.getPosition(true);
+                isZero = Numerical.isZero;
             // Create a matrix in which the scaling is applied in the non-
             // rotated state, so it is always applied before the rotation.
             // TODO: What about skewing? Do we need separately stored values for
             // these properties, and apply them separately from the matrix?
-            matrix.translate(center);
-            if (rotation)
-                matrix.rotate(rotation);
-            matrix.scale(scaling.x / current.x, scaling.y / current.y);
-            if (rotation)
-                matrix.rotate(-rotation);
-            matrix.translate(center.negate());
-            this.transform(matrix);
+            if (isZero(current.x) || isZero(current.y)) {
+                // If current scaling is destructive (at least one axis is 0),
+                // create a new matrix that applies the desired rotation,
+                // translation and scaling, without also preserving skewing.
+                matrix.translate(decomposed.translation);
+                if (rotation) {
+                    matrix.rotate(rotation);
+                }
+                matrix.scale(scaling.x, scaling.y);
+                this._matrix.set(matrix);
+            } else {
+                var center = this.getPosition(true);
+                matrix.translate(center);
+                if (rotation)
+                    matrix.rotate(rotation);
+                matrix.scale(scaling.x / current.x, scaling.y / current.y);
+                if (rotation)
+                    matrix.rotate(-rotation);
+                matrix.translate(center.negate());
+                this.transform(matrix);
+            }
             if (decomposed) {
                 decomposed.scaling = scaling;
                 this._decomposed = decomposed;
@@ -1244,7 +1258,7 @@ new function() { // Injection scope for various item event handlers
         // NOTE: calling initialize() also calls #_changed() for us, through its
         // call to #set() / #reset(), and this also handles _applyMatrix for us.
         var matrix = this._matrix;
-        matrix.initialize.apply(matrix, arguments);
+        matrix.set.apply(matrix, arguments);
     },
 
     /**
@@ -1612,6 +1626,7 @@ new function() { // Injection scope for various item event handlers
      * @param {Object} [options={ insert: true, deep: true }]
      *
      * @return {Item} the newly cloned item
+     * @chainable
      *
      * @example {@paperscript}
      * // Cloning items:
@@ -1725,16 +1740,32 @@ new function() { // Injection scope for various item event handlers
     },
 
     /**
+     * @name Item#rasterize
+     * @function
+     * @param {Number} [resolution=view.resolution]
+     * @param {Boolean} [insert=true]
+     * @deprecated use {@link #rasterize(options)} instead.
+     */
+    /**
      * Rasterizes the item into a newly created Raster object. The item itself
      * is not removed after rasterization.
      *
-     * @param {Number} [resolution=view.resolution] the resolution of the raster
-     *     in pixels per inch (DPI). If not specified, the value of
-     *     `view.resolution` is used.
-     * @param {Boolean} [insert=true] specifies whether the raster should be
+     * @option [resolution=view.resolution] {Number} the desired resolution to
+     *     be used when rasterizing, in pixels per inch (DPI). If not specified,
+     *     the value of `view.resolution` is used by default.
+     * @option [raster=null] {Raster} specifies a raster to be reused when
+     *     rasterizing. If the raster has the desired size already, then the
+     *     underlying canvas is reused and no new memory needs to be allocated.
+     *     If no raster is provided, a new raster item is created and returned
+     *     instead.
+     * @option [insert=true] {Boolean} specifies whether the raster should be
      *     inserted into the scene graph. When set to `true`, it is inserted
-     *     above the original
-     * @return {Raster} the newly created raster item
+     *     above the rasterized item.
+     *
+     * @name Item#rasterize
+     * @function
+     * @param {Object} [options={}] the rasterization options
+     * @return {Raster} the reused raster or the newly created raster item
      *
      * @example {@paperscript}
      * // Rasterizing an item:
@@ -1754,34 +1785,50 @@ new function() { // Injection scope for various item event handlers
      * circle.scale(5);
      * raster.scale(5);
      */
-    rasterize: function(resolution, insert) {
-        // TODO: Switch to options object for more descriptive call signature.
+    rasterize: function(arg0, arg1) {
+        var resolution,
+            insert,
+            raster;
+        if (Base.isPlainObject(arg0)) {
+            resolution = arg0.resolution;
+            insert = arg0.insert;
+            raster = arg0.raster;
+        } else {
+            resolution = arg0;
+            insert = arg1;
+        }
+        if (!raster) {
+            raster = new Raster(Item.NO_INSERT);
+        }
         var bounds = this.getStrokeBounds(),
             scale = (resolution || this.getView().getResolution()) / 72,
             // Floor top-left corner and ceil bottom-right corner, to never
             // blur or cut pixels.
             topLeft = bounds.getTopLeft().floor(),
             bottomRight = bounds.getBottomRight().ceil(),
-            size = new Size(bottomRight.subtract(topLeft)),
-            raster = new Raster(Item.NO_INSERT);
-        if (!size.isZero()) {
-            var canvas = CanvasProvider.getCanvas(size.multiply(scale)),
-                ctx = canvas.getContext('2d'),
+            boundsSize = new Size(bottomRight.subtract(topLeft)),
+            rasterSize = boundsSize.multiply(scale);
+        // Pass `true` for clear, so reused rasters don't draw over old pixels.
+        raster.setSize(rasterSize, true);
+
+        if (!rasterSize.isZero()) {
+            var ctx = raster.getContext(true),
                 matrix = new Matrix().scale(scale).translate(topLeft.negate());
             ctx.save();
             matrix.applyToContext(ctx);
             // See Project#draw() for an explanation of new Base()
             this.draw(ctx, new Base({ matrices: [matrix] }));
             ctx.restore();
-            // NOTE: We don't need to release the canvas since it belongs to the
-            // raster now!
-            raster.setCanvas(canvas);
         }
-        raster.transform(new Matrix().translate(topLeft.add(size.divide(2)))
+        raster._matrix.set(
+            new Matrix()
+                .translate(topLeft.add(boundsSize.divide(2)))
                 // Take resolution into account and scale back to original size.
-                .scale(1 / scale));
-        if (insert === undefined || insert)
+                .scale(1 / scale)
+        );
+        if (insert === undefined || insert) {
             raster.insertAbove(this);
+        }
         return raster;
     },
 
@@ -2221,8 +2268,9 @@ new function() { // Injection scope for hit-test functions shared with project
      * that x-value). Partial matching does work for {@link Item#data}.
      *
      * Matching items against a rectangular area is also possible, by setting
-     * either `options.inside` or `options.overlapping` to a rectangle describing
-     * the area in which the items either have to be fully or partly contained.
+     * either `options.inside` or `options.overlapping` to a rectangle
+     * describing the area in which the items either have to be fully or partly
+     * contained.
      *
      * See {@link Project#getItems(options)} for a selection of illustrated
      * examples.
@@ -2233,12 +2281,12 @@ new function() { // Injection scope for hit-test functions shared with project
      *     item, allowing the definition of more flexible item checks that are
      *     not bound to properties. If no other match properties are defined,
      *     this function can also be passed instead of the `options` object
-     * @option options.class {Function} the constructor function of the item type
-     *     to match against
-     * @option options.inside {Rectangle} the rectangle in which the items need to
-     *     be fully contained
-     * @option options.overlapping {Rectangle} the rectangle with which the items
-     *     need to at least partly overlap
+     * @option options.class {Function} the constructor function of the item
+     *     type to match against
+     * @option options.inside {Rectangle} the rectangle in which the items need
+     *     to be fully contained
+     * @option options.overlapping {Rectangle} the rectangle with which the
+     *     items need to at least partly overlap
      *
      * @param {Object|Function} options the criteria to match against
      * @return {Item[]} the list of matching descendant items
@@ -2259,9 +2307,9 @@ new function() { // Injection scope for hit-test functions shared with project
      * See {@link Project#getItems(match)} for a selection of illustrated
      * examples.
      *
-     * @param {Object|Function} match the criteria to match against
+     * @param {Object|Function} options the criteria to match against
      * @return {Item} the first descendant item matching the given criteria
-     * @see #getItems(match)
+     * @see #getItems(options)
      */
     getItem: function(options) {
         return Item._getItems(this, options, this._matrix, null, true)[0]
@@ -2664,6 +2712,7 @@ new function() { // Injection scope for hit-test functions shared with project
      * @param {Project|Layer|Group|CompoundPath} owner the item or project to
      * add the item to
      * @return {Item} the item itself, if it was successfully added
+     * @chainable
      */
     addTo: function(owner) {
         return owner._insertItem(undefined, this);
@@ -2676,6 +2725,7 @@ new function() { // Injection scope for hit-test functions shared with project
      * @param {Project|Layer|Group|CompoundPath} owner the item or project to
      * copy the item to
      * @return {Item} the new copy of the item, if it was successfully added
+     * @chainable
      */
     copyTo: function(owner) {
         return this.clone(false).addTo(owner);
@@ -3466,7 +3516,7 @@ new function() { // Injection scope for hit-test functions shared with project
      *
      * @name Item#shear
      * @function
-     * @param {Point} shear the horziontal and vertical shear factors as a point
+     * @param {Point} shear the horizontal and vertical shear factors as a point
      * @param {Point} [center={@link Item#position}]
      * @see Matrix#shear(shear[, center])
      */
@@ -3488,7 +3538,7 @@ new function() { // Injection scope for hit-test functions shared with project
      *
      * @name Item#skew
      * @function
-     * @param {Point} skew the horziontal and vertical skew angles in degrees
+     * @param {Point} skew the horizontal and vertical skew angles in degrees
      * @param {Point} [center={@link Item#position}]
      * @see Matrix#shear(skew[, center])
      */
@@ -4140,6 +4190,7 @@ new function() { // Injection scope for hit-test functions shared with project
      *     occurs, receiving a {@link MouseEvent} or {@link Event} object as its
      *     sole argument
      * @return {Item} this item itself, so calls can be chained
+     * @chainable
      *
      * @example {@paperscript}
      * // Change the fill color of the path to red when the mouse enters its
@@ -4171,6 +4222,7 @@ new function() { // Injection scope for hit-test functions shared with project
      *     properties: {@values frame, mousedown, mouseup, mousedrag, click,
      *     doubleclick, mousemove, mouseenter, mouseleave}
      * @return {Item} this item itself, so calls can be chained
+     * @chainable
      *
      * @example {@paperscript}
      * // Change the fill color of the path to red when the mouse enters its
@@ -4230,6 +4282,7 @@ new function() { // Injection scope for hit-test functions shared with project
      *     'mouseenter', 'mouseleave'}
      * @param {Function} function the function to be detached
      * @return {Item} this item itself, so calls can be chained
+     * @chainable
      */
     /**
      * Detach one or more event handlers to the item.
@@ -4240,6 +4293,7 @@ new function() { // Injection scope for hit-test functions shared with project
      *     properties: {@values frame, mousedown, mouseup, mousedrag, click,
      *     doubleclick, mousemove, mouseenter, mouseleave}
      * @return {Item} this item itself, so calls can be chained
+     * @chainable
      */
 
     /**
@@ -4366,7 +4420,7 @@ new function() { // Injection scope for hit-test functions shared with project
         // Exclude Raster items since they never draw a stroke and handle
         // opacity by themselves (they also don't call _setStyles)
         var blendMode = this._blendMode,
-            opacity = this._opacity,
+            opacity = Numerical.clamp(this._opacity, 0, 1),
             normalBlend = blendMode === 'normal',
             nativeBlend = BlendMode.nativeModes[blendMode],
             // Determine if we can draw directly, or if we need to draw into a
